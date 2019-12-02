@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Category;
 use App\Http\Requests\Posts\CreatePostsRequest;
 use App\Http\Requests\Posts\UpdatePostRequest;
 use App\Post;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * Class PostsController
@@ -14,6 +14,12 @@ use Illuminate\Support\Facades\Storage;
  */
 class PostsController extends Controller
 {
+
+    public function __construct()
+    {
+        $this->middleware('verifyCategoriesCount')->only('create', 'store');
+    }
+
     /**
      * Display a listing of the resource.
      *
@@ -31,13 +37,13 @@ class PostsController extends Controller
      */
     public function create()
     {
-         return view('posts.create');
+        return view('posts.create')->with('categories', Category::all());
     }
 
     /**
      * Store a newly created resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param \Illuminate\Http\Request $request
      * @return \Illuminate\Http\Response
      */
     public function store(CreatePostsRequest $request)
@@ -49,7 +55,8 @@ class PostsController extends Controller
             'description' => $request->description,
             'content' => $request->input('content'),
             'image' => $image,
-            'published_at' => $request->published_at
+            'published_at' => $request->published_at,
+            'category_id' => $request->category
         ]);
 
         session()->flash('success', 'Post created successfully.');
@@ -60,7 +67,7 @@ class PostsController extends Controller
     /**
      * Display the specified resource.
      *
-     * @param  int  $id
+     * @param int $id
      * @return \Illuminate\Http\Response
      */
     public function show($id)
@@ -71,29 +78,28 @@ class PostsController extends Controller
     /**
      * Show the form for editing the specified resource.
      *
-     * @param  int  $id
+     * @param int $id
      * @return \Illuminate\Http\Response
      */
     public function edit(Post $post)
     {
-        return view('posts.create')->with('post', $post);
+        return view('posts.create')->with('post', $post)->with('categories', Category::all());
     }
 
     /**
      * Update the specified resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
+     * @param \Illuminate\Http\Request $request
+     * @param int $id
      * @return \Illuminate\Http\Response
      */
     public function update(UpdatePostRequest $request, Post $post)
     {
         $data = $request->only(['title', 'description', 'published_at', 'content']);
 
-        if($request->hasFile('image'))
-        {
+        if ($request->hasFile('image')) {
             $image = $request->image->store('posts');
-            Storage::delete($post->image);
+            $post->deleteImage();
 
             $data['image'] = $image;
         }
@@ -116,8 +122,8 @@ class PostsController extends Controller
     {
         $post = Post::withTrashed()->where('id', $id)->firstOrFail();
 
-        if($post->trashed()) {
-            Storage::delete($post->image);
+        if ($post->trashed()) {
+            $post->deleteImage();
             $post->forceDelete();
         } else {
             $post->delete();
@@ -137,8 +143,19 @@ class PostsController extends Controller
      */
     public function trashed()
     {
-        $trashed = Post::withTrashed()->get();
+        $trashed = Post::onlyTrashed()->get();
 
         return view('posts.index')->withPosts($trashed);
+    }
+
+    public function restore($id)
+    {
+        $post = Post::withTrashed()->where('id', $id)->firstOrFail();
+
+        $post->restore();
+
+        session()->flash('success', 'Post restored successfully.');
+
+        return redirect()->back();
     }
 }

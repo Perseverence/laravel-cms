@@ -6,15 +6,7 @@
             {{ isset($post) ? "Edit post" : "Create post" }}
         </div>
         <div class="card-body">
-            @if($errors->any())
-                <div class="alert alert-danger">
-                    <ul class="list-group">
-                        @foreach($errors->all() as $error)
-                            <li class="list-group-item text-danger">{{$error}}</li>
-                        @endforeach
-                    </ul>
-                </div>
-            @endif
+            @include('partials.errors')
             <form action="{{isset($post) ? route('posts.update', $post->id) : route('posts.store') }}" method="POST" enctype="multipart/form-data">
                 {{csrf_field()}}
                 @if(isset($post))
@@ -56,6 +48,15 @@
                     <label for="image">Image</label>
                     <input type="file" class="form-control" name="image" id="image"
                            value="{{isset($post) ? $post->image : ""}}">
+                </div>
+
+                <div class="form-group">
+                    <label for="category">Category</label>
+                    <select name="category" id="category" class="form-control">
+                        @foreach($categories as $category)
+                        <option value="{{$category->id}}" {{isset($post) && $post->category_id === $category->id ? 'selected' : ''}}>{{$category->name}}</option>
+                        @endforeach
+                    </select>
                 </div>
 
                 <div class="form-group">
