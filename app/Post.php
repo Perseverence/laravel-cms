@@ -10,7 +10,11 @@ class Post extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = ['title', 'description', 'content', 'image', 'published_at', 'category_id'];
+    protected $dates = [
+        'published_at'
+    ];
+
+    protected $fillable = ['title', 'description', 'content', 'image', 'published_at', 'category_id', 'user_id'];
 
 
     public function category()
@@ -40,5 +44,26 @@ class Post extends Model
     public function hasTag($tagId)
     {
         return in_array($tagId, $this->tags->pluck('id')->toArray());
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function scopePublished($query)
+    {
+        return $query->where('published_at', '<=', now());
+    }
+
+    public function scopeSearched($query)
+    {
+        $search = request()->query('search');
+
+        if(!$search) {
+            return $query->published();
+        } else {
+            return $query->scopePublished()->where('title', 'LIKE', "%{$search}%");
+        }
     }
 }
